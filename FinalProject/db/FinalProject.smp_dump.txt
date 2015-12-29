@@ -1,0 +1,16 @@
+
+State Machine - |FinalProject|gamestate:nmb|present
+Name present.Sdraw present.Sgameover present.Supdate present.Sgenerate 
+present.Sgenerate 0 0 0 0 
+present.Supdate 0 0 1 1 
+present.Sgameover 0 1 0 1 
+present.Sdraw 1 0 0 1 
+
+State Machine - |FinalProject|Draw:g|present
+Name present.Scheck present.Sdgo present.Sfinish present.Sdraw present.Serase present.Sreset 
+present.Sreset 0 0 0 0 0 0 
+present.Serase 0 0 0 0 1 1 
+present.Sdraw 0 0 0 1 0 1 
+present.Sfinish 0 0 1 0 0 1 
+present.Sdgo 0 1 0 0 0 1 
+present.Scheck 1 0 0 0 0 1 

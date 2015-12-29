@@ -1,0 +1,406 @@
+
+module projecttests (LEDR, CLOCK_50,SW,KEY,
+// The ports below are for the VGA output.  Do not change.
+		VGA_CLK,   						//	VGA Clock
+		VGA_HS,							//	VGA H_SYNC
+		VGA_VS,							//	VGA V_SYNC
+		VGA_BLANK_N,						//	VGA BLANK
+		VGA_SYNC_N,						//	VGA SYNC
+		VGA_R,   						//	VGA Red[9:0]
+		VGA_G,	 						//	VGA Green[9:0]
+		VGA_B   						//	VGA Blue[9:0]
+	);
+
+
+output [9:0]LEDR;
+input [9:0]SW;
+input [3:0] KEY;
+input CLOCK_50;
+
+// Do not change the following outputs
+	output			VGA_CLK;   				//	VGA Clock
+	output			VGA_HS;					//	VGA H_SYNC
+	output			VGA_VS;					//	VGA V_SYNC
+	output			VGA_BLANK_N;				//	VGA BLANK
+	output			VGA_SYNC_N;				//	VGA SYNC
+	output	[9:0]	VGA_R;   				//	VGA Red[9:0]
+	output	[9:0]	VGA_G;	 				//	VGA Green[9:0]
+	output	[9:0]	VGA_B;   				//	VGA Blue[9:0]
+	
+	
+	vga_adapter VGA(
+			.resetn(KEY[1]),
+			.clock(CLOCK_50),
+			.colour(colour),
+			.x(x),
+			.y(y),
+			.plot(writeEn),
+			/* Signals for the DAC to drive the monitor. */
+			.VGA_R(VGA_R),
+			.VGA_G(VGA_G),
+			.VGA_B(VGA_B),
+			.VGA_HS(VGA_HS),
+			.VGA_VS(VGA_VS),
+			.VGA_BLANK(VGA_BLANK_N),
+			.VGA_SYNC(VGA_SYNC_N),
+			.VGA_CLK(VGA_CLK));
+		defparam VGA.RESOLUTION = "160x120";
+		defparam VGA.MONOCHROME = "FALSE";
+		defparam VGA.BITS_PER_COLOUR_CHANNEL = 1;
+		defparam VGA.BACKGROUND_IMAGE = "image.mif";
+
+	
+wire slowclock;
+wire [3:0]rand;
+
+//generating random positions 
+wire [7:0] startx1;//tilepicker
+wire [7:0] startx2;//tilepicker
+wire [7:0] startx3;//tilepicker
+wire [7:0] startx4;//tilepicker
+wire [7:0] startx5;//tilepicker
+
+wire [3:0] value1;//reg value which stores rand based on input from key
+wire [3:0] value2;//reg value which stores rand based on input from key
+wire [3:0] value3;//reg value which stores rand based on input from key
+wire [3:0] value4;//reg value which stores rand based on input from key
+wire [3:0] value5;//reg value which stores rand based on input from key
+
+//inputs to vga
+wire [7:0]x;
+wire [6:0]y;
+wire writeEn;
+wire [2:0]colour;
+
+counterswag a(CLOCK_50, slowclock);
+
+RandomDancing h(slowclock,LEDR[3:0], rand [3:0]);//produces rand which is a registor with rotating random values
+
+//might need to call saverand and tiler 5 tiles to generate 5 random tiles
+//send in different enables (like tgenerate) to know which tile im working with
+
+saverand j (SW[0],value1[3:0],rand[3:0],CLOCK_50);//saves the random value that randomDancing generated into a registor called value
+tiler p (value1[3:0],startx1[7:0]);//convers value to a x position on the screen
+
+saverand l (SW[1],value2[3:0],rand[3:0],CLOCK_50);//saves the random value that randomDancing generated into a registor called value
+tiler m (value2[3:0],startx2[7:0]);//convers value to a x position on the screen
+
+saverand n (SW[2],value3[3:0],rand[3:0],CLOCK_50);//saves the random value that randomDancing generated into a registor called value
+tiler o (value3[3:0],startx3[7:0]);//convers value to a x position on the screen
+
+saverand r (SW[3],value4[3:0],rand[3:0],CLOCK_50);//saves the random value that randomDancing generated into a registor called value
+tiler s (value4[3:0],startx4[7:0]);//convers value to a x position on the screen
+
+saverand z (SW[4],value5[3:0],rand[3:0],CLOCK_50);//saves the random value that randomDancing generated into a registor called value
+tiler v  (value5[3:0],startx5[7:0]);//convers value to a x position on the screen
+
+wire done;
+//Draw g(startx1,7'b0,startx2,7'b0,startx3,7'b0,startx4,7'b0,startx5,7'b0,1,done,CLOCK_50,writeEn, x, y,colour );
+drawrandom g (CLOCK_50, x[7:0], y[6:0],writeEn, startx3[7:0]);//sends the x position and draws a square at the position
+
+assign LEDR[9:6]=value1[3:0];
+endmodule
+
+module RandomDancing(slowclock,ledr,q);
+
+input slowclock;
+output [3:0]ledr;
+
+output [3:0]q;
+
+
+//parameter [7:0]x1 = 8'b00000000, x2 = 8'b00100000,x3 = 8'b01000000,x4 = 8'b01100000,x5=8'b10000000;
+
+	flipflop a (1'b1^q[3], q[0], slowclock);
+	flipflop b (q[0], q[1], slowclock);
+	flipflop c (q[0]^q[1],q[2], slowclock);
+	flipflop d (q[1]^q[2],q[3], slowclock);
+
+	
+assign ledr [3:0] = q[3:0];
+
+endmodule
+
+module saverand (en,swag,rand,clock);
+input clock;
+input en;
+input [3:0]rand;
+output reg [3:0]swag;
+ 
+always @(clock)
+begin
+	if(en)
+		swag[3:0] <= rand[3:0];
+	
+end
+
+endmodule 
+
+
+//D flip flop declaration that includes an asynchronus reset and also contains a mux that loads the letters 
+
+module flipflop (d, q, clock);
+	input d;
+	input clock;
+	output reg q;
+	
+	always @(posedge clock) // triggered every time clock rises
+			q <= d; // wire passed from first mux
+endmodule
+
+
+module counterswag (clock, enable);
+	input	clock;
+	output enable;
+	
+	reg [26:0] count;
+	
+	always @ (posedge clock)
+	begin	
+		begin
+			if (count==26'd50000000)//25000000 //enable is 1 every 1/4 of a second 
+				count<=26'd0;
+			else 
+				count <=count +1'b1;
+		end
+	end
+	assign enable = (count==26'd50000000)?1:0;
+endmodule
+
+
+module tiler (random,x);
+
+input [3:0] random;
+output reg [7:0] x;
+
+parameter [7:0]x1 = 8'b00000000, x2 = 8'b00100000,x3 = 8'b01000000,x4 = 8'b01100000,x5=8'b10000000;
+always @(*)
+begin
+	case (random)
+	4'b0000: x=x1;
+	4'b0001: x=x2;
+	4'b0010: x=x3;
+	4'b0011: x=x4;
+	4'b0100: x=x5;
+	4'b0101: x=x1;
+	4'b0110: x=x2;
+	4'b0111: x=x3;
+	4'b1000: x=x4;
+	4'b1001: x=x5;
+	4'b1010: x=x1;
+	4'b1011: x=x2;
+	4'b1100: x=x3;
+	4'b1101: x=x4;
+	4'b1110: x=x5;
+	4'b1111: x=x5;
+	default: x=x1;
+	endcase
+end
+endmodule
+
+module drawrandom (clock, RX, RY, plot, startx);
+
+	input clock;
+	input [7:0]startx;
+	output reg plot;
+	output reg [7:0]RX;
+	output reg [6:0]RY;
+	reg [3:0]counter;
+	
+	//store the next state at posedge clock
+	 always @(posedge clock)
+	 begin
+		if (counter>4'b1111)
+			counter<=4'b0;
+		else 
+		begin
+			plot<=1;
+			counter<=counter+1'b1;
+			RX<=startx+counter[1:0];
+			RY<=7'b0111100+counter[3:2]; 
+		end
+	end	
+endmodule
+
+
+/*module Draw (startx1,starty1,startx2,starty2,startx3,starty3,startx4,starty4,startx5,starty5,go,done,clock, plot, RX, RY,colour);
+
+	input [7:0]startx1;
+	input [6:0]starty1;
+	
+	input [7:0]startx2;
+	input [6:0]starty2;
+	
+	input [7:0]startx3;
+	input [6:0]starty3;
+	
+	input [7:0]startx4;
+	input [6:0]starty4;
+	
+	input [7:0]startx5;
+	input [6:0]starty5;
+	
+	input go;
+	output reg done;
+	output reg plot;
+	reg check;
+	input clock;
+	output reg [2:0]colour;	
+
+	//state parameter
+	parameter Scheck = 3'b000,Serase= 3'b001,Sdraw=3'b010,Sfinish=3'b011;
+	reg erase, draw;
+	//LD_startx, LD_starty, LD_c, reset, LD_RX,LD_RY, enable;
+	
+	reg [2:0]present;
+	reg [2:0] next;
+	
+	output reg [7:0]RX;
+	output reg [6:0]RY;
+	reg [3:0]counter;//used to count the pixels 
+	reg [3:0]black;
+	
+	always @ (*)
+	begin: state_table
+		case (present)		
+		Scheck: 
+			if (found)
+				next=Serase;
+			else
+				next=Scheck;
+		Serase:
+			next=Sdraw;
+		Sdraw:
+			next= Sfinish;
+		Sfinish:
+			next= Scheck;
+		default: next = Scheck;  
+		endcase
+	end
+	
+	reg [7:0]SX;
+	reg [6:0]SY;
+	reg found;
+	reg [2:0]count;
+	//store the next state at posedge clock
+	 always @(posedge clock)
+	 begin
+	 
+	 if (check&&!found&&!done&&go)
+	 begin
+	 	if (SX>8'b10100000)
+		begin
+			SX<=8'b0;
+			SY<=SY+1'b1;
+		end
+		else
+		begin
+			SX<=SX+1'b1;
+		end
+		if ((SX==startx1&&SY==starty1)||(SX==startx2&&SY==starty2)||(SX==startx3&&SY==starty3)||(SX==startx4&&SY==starty4)||(SX==startx5&&SY==starty5))
+		begin
+			found<=1;
+			count<=count+1'b1;
+		end
+		else
+			found<=0;
+	 end
+	 
+	 if (erase)
+		begin//draw void
+			colour<=3'b111;
+		if (black>4'b1111)
+			black<=4'b0;
+		else 
+		begin
+			black<=black+1'b1;
+			RX<=SX+black[1:0];
+			RY<=SY+black[3:2];
+		end
+	end
+	
+	if  (draw)//draw square
+	 begin
+			colour<=3'b010;
+		if (counter>4'b1111)
+			counter<=4'b0;
+		else 
+		begin
+			counter<=counter+1'b1;
+			RX<=SX+counter[1:0];
+			RY<=SY+counter[3:2];
+		end
+	end	
+	
+	//update the present state
+	if(go)
+		begin
+			present <= Scheck;
+			counter<=4'b0;
+		end
+		else
+			present <= next;
+	
+	 end
+	 
+	 always @(*)
+	 begin	
+	 case (present)
+		Scheck:  
+			begin
+				erase=0;
+				draw=0; 
+				plot=0;
+				done=0;
+				check=1;
+			end
+		
+		Sdraw:
+			begin
+				erase=0;
+				draw=0; 
+				done=0;
+				check=0;
+				if (counter==4'b1111)
+				begin
+					plot=1;
+				end
+				else if (counter<4'b1111)
+				begin
+					plot=1;
+				end
+			end
+		Sfinish:
+		begin	
+				erase=0;
+				draw=0; 
+				plot=0;
+				check=0;
+				if (count==3'b101)
+						done=1;
+				else
+					done=0;
+		end	
+		Serase:
+		begin
+			erase=1;
+			draw=0; 
+			done=0;
+			check=0;
+			if (black==4'b1111)
+			begin		
+			plot=1;
+			end
+			else if (black<4'b1111)
+			begin		
+			plot=1;
+			end
+		end
+	 endcase
+	end
+	 	 
+	
+endmodule*/
+
+
+
